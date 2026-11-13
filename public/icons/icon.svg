@@ -1,8 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="0" fill="#2563eb"/>
-  <path d="M156 96h200a20 20 0 0 1 20 20v300l-30-20-30 20-30-20-30 20-30-20-30 20-30-20-30 20V116a20 20 0 0 1 20-20z" fill="#ffffff"/>
-  <rect x="186" y="156" width="140" height="18" rx="9" fill="#2563eb"/>
-  <rect x="186" y="206" width="140" height="18" rx="9" fill="#93b4f5"/>
-  <rect x="186" y="256" width="96" height="18" rx="9" fill="#93b4f5"/>
-  <rect x="186" y="316" width="140" height="26" rx="8" fill="#2563eb"/>
+  <rect width="512" height="512" fill="#2445a8"/>
+  <g transform="translate(256 256) scale(1.16) translate(-256 -255)">
+  <path d="M166 92h180a18 18 0 0 1 18 18v294l-12 14-12-14-12 14-12-14-12 14-12-14-12 14-12-14-12 14-12-14-12 14-12-14-12 14-12-14-12 14-12-14-12 14-12-14V110a18 18 0 0 1 18-18z" fill="#ffffff"/>
+  <rect x="182" y="146" width="112" height="16" rx="8" fill="#c9d4f2"/>
+  <rect x="182" y="184" width="148" height="16" rx="8" fill="#c9d4f2"/>
+  <rect x="182" y="222" width="84" height="16" rx="8" fill="#c9d4f2"/>
+  <line x1="185" y1="276" x2="327" y2="276" stroke="#a9b8e4" stroke-width="6" stroke-linecap="round" stroke-dasharray="10 14"/>
+  <rect x="182" y="306" width="148" height="36" rx="10" fill="#2445a8"/>
+</g>
 </svg>
