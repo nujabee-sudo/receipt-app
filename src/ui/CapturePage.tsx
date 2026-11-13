@@ -8,6 +8,7 @@ import { useApp } from './appContext';
 import { AutoComplete } from './components/AutoComplete';
 import { useSettings } from './hooks';
 import { reportStorageFull } from './storageFull';
+import { Icon } from './components/Icon';
 
 const SITE_KEY = 'capture-site';
 const readSite = () => {
@@ -63,7 +64,7 @@ export function CapturePage() {
     <main className="page capture">
       <header className="top-bar">
         <Link to="/" className="icon-link" aria-label="뒤로">
-          ‹
+          <Icon name="back" />
         </Link>
         <h1>영수증 촬영</h1>
       </header>
@@ -75,7 +76,7 @@ export function CapturePage() {
 
       <section className="capture-actions">
         <button className="btn primary big" disabled={busy} onClick={() => camRef.current?.click()}>
-          📷 촬영
+          <Icon name="camera" size={28} /> 촬영
         </button>
         <button className="btn" disabled={busy} onClick={() => galRef.current?.click()}>
           앨범에서 고르기
@@ -112,7 +113,7 @@ export function CapturePage() {
       )}
 
       <nav className="bottom-bar">
-        <Link to="/" className="btn primary">
+        <Link to="/" className="btn">
           완료
         </Link>
       </nav>

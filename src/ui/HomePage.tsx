@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { composeContent } from '../domain/content';
 import { sortReceipts } from '../domain/sort';
 import type { Receipt } from '../domain/types';
 import { needsBackupReminder } from '../backup/backup';
 import { receipts as store } from '../storage/receipts';
 import { Banner } from './components/Banner';
+import { Icon } from './components/Icon';
 import { Thumb } from './components/Thumb';
 import { currentMonth, dateHeading, monthLabel, shiftMonth, won } from './format';
 import { useApp } from './appContext';
@@ -16,36 +16,40 @@ import { useStorageFull } from './storageFull';
 function StatusIcon({ r }: { r: Receipt }) {
   if (r.status === 'queued' || r.status === 'recognizing')
     return (
-      <span className="status" aria-label="인식 중">
-        ⏳
+      <span className="status busy" aria-label="인식 중">
+        인식 중
       </span>
     );
   if (r.status === 'needs_review')
     return (
       <span className="status warn" aria-label="확인 필요">
-        ⚠
+        확인 필요
       </span>
     );
   if (r.generatedAt)
     return (
       <span className="status ok" aria-label="문서 생성 완료">
-        ✓
+        문서 완료
       </span>
     );
   return null;
 }
 
 function Row({ r }: { r: Receipt }) {
-  const content = composeContent(r.site, r.item);
+  // 첫 줄은 무엇에 썼는지(항목), 둘째 줄은 어디서(가맹점·현장)
+  const sub = [r.item ? r.merchant : null, r.site].filter(Boolean).join(' / ');
   return (
     <li>
       <Link className="row" to={`/review/${r.id}`}>
         <Thumb photo={r.photos[0]} />
         <span className="row-main">
-          <span className="row-amount">{won(r.amount)}</span>
-          <span className="row-sub">{content || r.merchant || '내용 없음'}</span>
+          <span className="row-title">{r.item || r.merchant || '내용 없음'}</span>
+          {sub && <span className="row-sub">{sub}</span>}
         </span>
-        <StatusIcon r={r} />
+        <span className="row-end">
+          <span className="row-amount">{won(r.amount)}</span>
+          <StatusIcon r={r} />
+        </span>
       </Link>
     </li>
   );
@@ -74,25 +78,31 @@ export function HomePage({ initialMonth }: { initialMonth?: string }) {
   const active = sorted.filter((r) => r.status !== 'excluded');
   const excluded = sorted.filter((r) => r.status === 'excluded');
   const total = active.reduce((a, r) => a + (r.amount ?? 0), 0);
+  const toReview = active.filter((r) => r.status === 'needs_review').length;
 
   return (
     <main className="page home">
       <header className="month-bar">
-        <button aria-label="이전 달" onClick={() => setYm(shiftMonth(ym, -1))}>
-          ◀
-        </button>
-        <h1>{monthLabel(ym)}</h1>
-        <button aria-label="다음 달" onClick={() => setYm(shiftMonth(ym, 1))}>
-          ▶
-        </button>
+        <div className="month-nav">
+          <button aria-label="이전 달" onClick={() => setYm(shiftMonth(ym, -1))}>
+            <Icon name="prev" />
+          </button>
+          <h1>{monthLabel(ym)}</h1>
+          <button aria-label="다음 달" onClick={() => setYm(shiftMonth(ym, 1))}>
+            <Icon name="next" />
+          </button>
+        </div>
         <Link className="icon-link" to="/settings" aria-label="설정">
-          ⚙
+          <Icon name="gear" />
         </Link>
       </header>
 
       <section className="summary">
         <strong>{won(total)}</strong>
-        <span>{active.length}건</span>
+        <span className="summary-meta">
+          <span>{active.length}건</span>
+          {toReview > 0 && <span className="summary-warn">확인 필요 {toReview}건</span>}
+        </span>
       </section>
 
       {s && !s.geminiKey && <Banner to="/settings">설정에서 Gemini API 키를 입력해 주세요</Banner>}
@@ -109,7 +119,7 @@ export function HomePage({ initialMonth }: { initialMonth?: string }) {
         </Banner>
       )}
 
-      {all && active.length === 0 && <p className="empty">아직 영수증이 없어요. 아래 [촬영]으로 시작하세요.</p>}
+      {all && active.length === 0 && <p className="empty">아직 영수증이 없어요. 아래 촬영 버튼으로 시작하세요.</p>}
 
       {groupByDate(active).map(([date, list]) => (
         <section key={date ?? 'none'} className="day">
@@ -139,10 +149,10 @@ export function HomePage({ initialMonth }: { initialMonth?: string }) {
 
       <nav className="bottom-bar">
         <Link className="btn primary" to="/capture">
-          촬영
+          <Icon name="camera" /> 촬영
         </Link>
         <Link className="btn" to={`/generate?ym=${ym}`}>
-          문서 생성
+          <Icon name="doc" /> 문서 생성
         </Link>
       </nav>
     </main>

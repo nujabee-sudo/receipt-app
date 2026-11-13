@@ -13,6 +13,7 @@ import { Thumb } from './components/Thumb';
 import { UserChips } from './components/UserChips';
 import { CornerEditor } from './CornerEditor';
 import { newId } from './format';
+import { Icon } from './components/Icon';
 
 interface Form {
   date: string;
@@ -179,7 +180,7 @@ function ReviewForm({ id }: { id: string }) {
             nav('/');
           }}
         >
-          ‹
+          <Icon name="back" />
         </button>
         <h1>영수증 확인</h1>
       </header>
@@ -212,7 +213,7 @@ function ReviewForm({ id }: { id: string }) {
         </section>
       )}
 
-      {r.status === 'queued' || r.status === 'recognizing' ? <p className="muted">⏳ 자동 인식 중이에요. 직접 입력해도 돼요.</p> : null}
+      {r.status === 'queued' || r.status === 'recognizing' ? <p className="notice">자동 인식 중이에요. 직접 입력해도 돼요.</p> : null}
 
       {warnings.length > 0 && (
         <ul className="warnings" role="alert">

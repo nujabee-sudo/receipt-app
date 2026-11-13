@@ -6,6 +6,7 @@ import { shareOrDownload } from '../export/share';
 import { receipts } from '../storage/receipts';
 import { currentMonth, dateHeading, monthLabel, won } from './format';
 import { useObjectUrl, useSettings } from './hooks';
+import { Icon } from './components/Icon';
 
 export function GeneratePage() {
   const [params] = useSearchParams();
@@ -55,7 +56,7 @@ export function GeneratePage() {
     <main className="page generate">
       <header className="top-bar">
         <Link to="/" className="icon-link" aria-label="뒤로">
-          ‹
+          <Icon name="back" />
         </Link>
         <h1>{monthLabel(ym)} 문서 생성</h1>
       </header>

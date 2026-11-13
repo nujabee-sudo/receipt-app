@@ -8,6 +8,7 @@ import { settings as store } from '../storage/settings';
 import { useApp } from './appContext';
 import { currentMonth, monthLabel, shiftMonth } from './format';
 import { reportStorageFull } from './storageFull';
+import { Icon } from './components/Icon';
 
 function Field(props: { label: string; value: string; onChange: (v: string) => void; type?: string; hint?: string; inputMode?: 'numeric' }) {
   return (
@@ -84,7 +85,7 @@ export function SettingsPage() {
     <main className="page settings">
       <header className="top-bar">
         <Link to="/" aria-label="뒤로">
-          ‹
+          <Icon name="back" />
         </Link>
         <h1>설정</h1>
       </header>
