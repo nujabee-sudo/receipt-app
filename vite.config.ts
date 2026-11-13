@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/icon.svg', 'icons/apple-touch-icon.png'],
+      includeAssets: ['icons/apple-touch-icon.png'],
       manifest: {
         name: '영수증 정리',
         short_name: '영수증',
