@@ -1,0 +1,7 @@
+node_modules/
+dist/
+out/
+.superpowers/
+tests/fixtures/reference/
+test-results/
+playwright-report/
