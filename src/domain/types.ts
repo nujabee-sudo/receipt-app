@@ -1,5 +1,8 @@
 export type Pt = [number, number];
 
+/** 영수증을 바로 세우려면 시계 방향으로 돌려야 하는 각도 */
+export type Rotation = 0 | 90 | 180 | 270;
+
 export type ReceiptStatus = 'queued' | 'recognizing' | 'needs_review' | 'done' | 'excluded';
 
 export type Category =
@@ -22,8 +25,12 @@ export interface Photo {
   processed: Blob | null;
   /** 사용자가 자르기를 직접 맞췄으면 true (다시 인식해도 유지) */
   manualCorners?: boolean;
-  /** 원본 기준 픽셀 모서리 좌표 (좌상, 우상, 우하, 좌하) */
+  /** 원본 기준 픽셀 모서리 좌표 (사진 기준 좌상, 우상, 우하, 좌하) */
   corners: [Pt, Pt, Pt, Pt] | null;
+  /** 보정본을 만들 때 시계 방향으로 돌린 각도 (없으면 0) */
+  rotation?: Rotation;
+  /** 보정본이 바로 세워져 있어 인식에 보정본을 쓴다 (누운 영수증을 세워 다시 인식할 때) */
+  upright?: boolean;
 }
 
 export interface Receipt {

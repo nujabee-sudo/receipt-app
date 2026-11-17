@@ -11,6 +11,7 @@ const item = (over: Record<string, unknown> = {}) => ({
   approvalNo: '12345678',
   category: 'urea',
   isCancellation: false,
+  rotation: 0,
   corners: [
     [100, 50],
     [900, 60],
@@ -81,4 +82,14 @@ test('top-level garbage throws format error', () => {
   } catch (e) {
     expect((e as RecognitionError).kind).toBe('format');
   }
+});
+
+test('rotation passes through when it is a right angle', () => {
+  expect(parseRecognition({ results: [item({ rotation: 90 })] }, 1)[0].rotation).toBe(90);
+  expect(parseRecognition({ results: [item({ rotation: 270 })] }, 1)[0].rotation).toBe(270);
+});
+
+test('a missing or odd rotation is treated as upright', () => {
+  for (const rotation of [undefined, 45, '90', -90, 360])
+    expect(parseRecognition({ results: [item({ rotation })] }, 1)[0].rotation).toBe(0);
 });

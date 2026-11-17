@@ -24,7 +24,9 @@ export const PROMPT = `다음은 한국 영수증 사진들입니다. 각 사진
 - merchant: 가맹점(상호) 이름. approvalNo: 승인번호.
 - category: 주유=fuel, 요소수=urea, 식당·식권=meal, 숙박=lodging, 주차=parking, 통행료=toll, 약국=pharmacy, 편의점=convenience, 자재·공구=material, 그 외=other.
 - isCancellation: 승인취소/취소 영수증이면 true.
-- corners: 영수증 종이의 네 모서리 [좌상, 우상, 우하, 좌하]. 이미지 크기 기준 0~1000 정규화 좌표.
+- rotation: 사진 속 영수증이 옆으로 눕거나 뒤집혀 있을 수 있습니다. 글자를 바로 읽으려면 사진을 시계 방향으로 몇 도 돌려야 하는지 0, 90, 180, 270 중에서 고르세요. 바로 서 있으면 0.
+  영수증이 누워 있어도 글자 방향을 따라 끝까지 읽으세요.
+- corners: 영수증 종이의 네 모서리를 사진에 보이는 그대로 [사진의 좌상, 우상, 우하, 좌하] 순서로. 이미지 크기 기준 0~1000 정규화 좌표.
 읽을 수 없는 값은 추측하지 말고 null로 두세요.`;
 
 async function toBase64(blob: Blob): Promise<string> {

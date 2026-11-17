@@ -1,5 +1,5 @@
 import { suggestItem } from '../domain/content';
-import type { Photo, Receipt } from '../domain/types';
+import type { Photo, Receipt, Rotation } from '../domain/types';
 import { validateReceipt } from '../domain/validate';
 import { db } from '../storage/db';
 import { receipts } from '../storage/receipts';
@@ -19,8 +19,8 @@ export interface QueueDeps {
   recognizer: () => Promise<Recognizer | null>;
   /** 인식용 1600px JPEG */
   prepare: (p: Photo) => Promise<Blob>;
-  /** corners(0~1000 정규화)로 보정본을 만들어 갱신된 Photo를 돌려준다 */
-  process: (p: Photo, corners: Corners | null) => Promise<Photo>;
+  /** corners(0~1000 정규화)로 펴고 rotation만큼 돌려 보정본을 만든 Photo를 돌려준다 */
+  process: (p: Photo, corners: Corners | null, rotation: Rotation) => Promise<Photo>;
   now: () => number;
   sleep: (ms: number) => Promise<void>;
   isOnline: () => boolean;
@@ -28,7 +28,12 @@ export interface QueueDeps {
   today: () => string;
 }
 
-export type RunResult = 'idle' | 'processed' | 'no_key' | 'auth' | 'quota' | 'offline' | 'retry';
+/** 인식에 보낼 사진: 누운 영수증을 바로 세운 보정본이 있으면 그것, 아니면 원본 */
+export function recognitionSource(p: Photo): Blob {
+  return (p.upright && p.processed ? p.processed : (p.original ?? p.processed))!;
+}
+
+export type RunResult ='idle' | 'processed' | 'no_key' | 'auth' | 'quota' | 'offline' | 'retry';
 
 export function createQueue(deps: QueueDeps) {
   let lastRequestAt = -Infinity;
@@ -87,13 +92,26 @@ export function createQueue(deps: QueueDeps) {
     const s = await settingsStore.get();
     const first = r.photos[0];
     // 보정(이미지 처리)은 트랜잭션 밖에서 미리 한다. 사용자가 직접 맞춘 자르기는 유지한다.
+    // 이미 바로 세운 보정본으로 읽은 결과라면 모서리가 보정본 기준이므로 원본을 다시 자르지 않는다.
     let processed: Photo | null = null;
-    if (first && !first.manualCorners) {
+    if (first && !first.manualCorners && !first.upright) {
       try {
-        processed = await deps.process(first, res.corners);
+        processed = await deps.process(first, res.corners, res.rotation);
       } catch {
         /* 보정 실패 시 원본으로 계속 */
       }
+    }
+    // 누운 영수증: 누운 채로 읽은 값은 버리고, 바로 세운 보정본으로 한 번만 더 읽는다
+    // (원본이 지워져 새 보정본을 못 만든 경우는 제외)
+    if (processed?.processed && processed.processed !== first.processed && res.rotation !== 0 && !res.isCancellation) {
+      const upright: Photo = { ...processed, upright: true };
+      await updateIfRecognizing(r.id, (f) => {
+        const same = f.photos[0]?.id === upright.id && !f.photos[0].manualCorners;
+        // 그사이 사용자가 자르기를 직접 맞췄으면 그 사진을 두고 다시 읽는다 (그때는 보정을 건너뛰어 반복되지 않는다)
+        const photos = same ? [upright, ...f.photos.slice(1)] : f.photos;
+        return { ...f, photos, status: 'queued', batchSingle: true };
+      });
+      return;
     }
     await updateIfRecognizing(r.id, (f, all) => {
       const photos =

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { db } from '../../src/storage/db';
 import { receipts } from '../../src/storage/receipts';
 import { settings } from '../../src/storage/settings';
-import { createQueue, FAILED_WARNING, type QueueDeps } from '../../src/recognition/queue';
+import { createQueue, FAILED_WARNING, recognitionSource, type QueueDeps } from '../../src/recognition/queue';
 import { RecognitionError, type RecognitionResult } from '../../src/recognition/schema';
 import type { Recognizer } from '../../src/recognition/recognizer';
 import type { Photo } from '../../src/domain/types';
@@ -48,6 +48,7 @@ const result = (index: number, over: Partial<RecognitionResult> = {}): Recogniti
   approvalNo: null,
   category: 'meal',
   isCancellation: false,
+  rotation: 0,
   corners: null,
   ...over,
 });
@@ -331,4 +332,66 @@ test('status() remembers the last result for screens that mount later', async ()
   q.start();
   await vi.waitFor(() => expect(q.status()).toBe('auth'));
   q.stop();
+});
+
+// ---- 누운 영수증: 바로 세운 보정본으로 한 번 더 인식한다
+test('a sideways receipt is stood upright and recognized again from the upright photo', async () => {
+  await seed(1);
+  const h = harness((_, call) => (call === 1 ? [result(0, { rotation: 90, amount: 111 })] : [result(0, { amount: 5000 })]));
+  const processCalls: unknown[][] = [];
+  h.deps.process = async (p, corners, rotation) => {
+    processCalls.push([corners, rotation]);
+    return { ...p, rotation, processed: new Blob(['upright']) };
+  };
+  const q = createQueue(h.deps);
+
+  await q.runOnce();
+  let r = (await receipts.get('r0'))!;
+  expect(r.status).toBe('queued');
+  expect(r.batchSingle).toBe(true);
+  expect(r.amount).toBeNull(); // 누운 채로 읽은 값은 쓰지 않는다
+  expect(r.photos[0].upright).toBe(true);
+  expect(r.photos[0].rotation).toBe(90);
+  expect(await r.photos[0].processed!.text()).toBe('upright');
+  expect(processCalls).toEqual([[null, 90]]);
+
+  await q.runOnce();
+  r = (await receipts.get('r0'))!;
+  expect(r.status).toBe('needs_review');
+  expect(r.amount).toBe(5000);
+  expect(processCalls).toHaveLength(1); // 세운 사진 기준 모서리로 원본을 다시 자르지 않는다
+  expect(await r.photos[0].processed!.text()).toBe('upright');
+  expect(h.calls).toHaveLength(2);
+});
+
+test('a receipt that still looks sideways on the second pass is not sent a third time', async () => {
+  await seed(1);
+  const h = harness(() => [result(0, { rotation: 90 })]);
+  const q = createQueue(h.deps);
+  await q.runOnce();
+  await q.runOnce();
+  expect((await receipts.get('r0'))!.status).toBe('needs_review');
+  expect(await q.runOnce()).toBe('idle');
+  expect(h.calls).toHaveLength(2);
+});
+
+test('when the upright photo cannot be made the first reading is used', async () => {
+  await seed(1);
+  const h = harness(() => [result(0, { rotation: 270, amount: 7000 })]);
+  h.deps.process = async () => {
+    throw new Error('decode');
+  };
+  await createQueue(h.deps).runOnce();
+  const r = (await receipts.get('r0'))!;
+  expect(r.status).toBe('needs_review');
+  expect(r.amount).toBe(7000);
+  expect(h.calls).toHaveLength(1);
+});
+
+test('recognition reads the upright photo once it exists, otherwise the original', () => {
+  const original = new Blob(['o']);
+  const processed = new Blob(['p']);
+  expect(recognitionSource({ id: 'a', original, processed, corners: null })).toBe(original);
+  expect(recognitionSource({ id: 'a', original, processed, corners: null, upright: true })).toBe(processed);
+  expect(recognitionSource({ id: 'a', original: null, processed, corners: null })).toBe(processed);
 });

@@ -1,4 +1,4 @@
-import type { Category, Pt } from '../domain/types';
+import type { Category, Pt, Rotation } from '../domain/types';
 
 export type Corners = [Pt, Pt, Pt, Pt];
 
@@ -12,6 +12,8 @@ export interface RecognitionResult {
   approvalNo: string | null;
   category: Category;
   isCancellation: boolean;
+  /** 영수증을 바로 세우려면 시계 방향으로 돌려야 하는 각도 */
+  rotation: Rotation;
   /** 0~1000 정규화 좌표 (좌상, 우상, 우하, 좌하) */
   corners: Corners | null;
 }
@@ -62,6 +64,11 @@ export const RESPONSE_SCHEMA = {
           approvalNo: nullable('string'),
           category: { type: 'string', enum: CATEGORIES },
           isCancellation: { type: 'boolean' },
+          rotation: {
+            type: 'integer',
+            enum: [0, 90, 180, 270],
+            description: '영수증 글자를 바로 읽으려면 사진을 시계 방향으로 몇 도 돌려야 하는지',
+          },
           corners: {
             type: ['array', 'null'],
             items: { type: 'array', items: { type: 'number' } },
@@ -78,6 +85,7 @@ export const RESPONSE_SCHEMA = {
           'approvalNo',
           'category',
           'isCancellation',
+          'rotation',
           'corners',
         ],
       },
@@ -113,6 +121,9 @@ function timeOf(v: unknown): string | null {
   const mi = Number(m[2]);
   return h < 24 && mi < 60 ? `${String(h).padStart(2, '0')}:${m[2]}` : null;
 }
+
+const ROTATIONS: Rotation[] = [0, 90, 180, 270];
+const rotationOf = (v: unknown): Rotation => (ROTATIONS.includes(v as Rotation) ? (v as Rotation) : 0);
 
 function cornersOf(v: unknown): Corners | null {
   if (!Array.isArray(v) || v.length !== 4) return null;
@@ -160,6 +171,7 @@ export function parseRecognition(raw: unknown, imageCount: number): RecognitionR
       approvalNo: str(r.approvalNo),
       category: CATEGORIES.includes(r.category as Category) ? (r.category as Category) : 'other',
       isCancellation: r.isCancellation === true,
+      rotation: rotationOf(r.rotation),
       corners: cornersOf(r.corners),
     });
   }

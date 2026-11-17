@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { composeContent } from '../domain/content';
-import type { Photo, Pt, Receipt } from '../domain/types';
+import type { Photo, Pt, Receipt, Rotation } from '../domain/types';
 import { W } from '../domain/validate';
 import { confirmReceipt, nextToReview } from '../ingest/ingest';
 import { presets } from '../storage/presets';
@@ -122,11 +122,23 @@ function ReviewForm({ id }: { id: string }) {
     const p = r.photos[photoIdx];
     if (!p?.original) return;
     const { processPhoto } = await import('../imaging/browser');
-    const processed = await processPhoto(p.original, q);
+    const processed = await processPhoto(p.original, q, p.rotation ?? 0);
     await persist((fresh) => ({
       photos: fresh.photos.map((x) => (x.id === p.id ? { ...x, corners: q, processed, manualCorners: true } : x)),
     }));
     setEditing(false);
+  };
+
+  /** 보정본을 시계 방향으로 90도씩 돌린다 (자동으로 세운 방향이 틀렸을 때) */
+  const rotate = async () => {
+    const p = r.photos[photoIdx];
+    if (!p?.original) return;
+    const rotation = (((p.rotation ?? 0) + 90) % 360) as Rotation;
+    const { processPhoto } = await import('../imaging/browser');
+    const processed = await processPhoto(p.original, p.corners, rotation);
+    await persist((fresh) => ({
+      photos: fresh.photos.map((x) => (x.id === p.id ? { ...x, rotation, processed, upright: rotation !== 0 } : x)),
+    }));
   };
 
   const addPhoto = async (f: File | undefined) => {
@@ -201,9 +213,14 @@ function ReviewForm({ id }: { id: string }) {
           )}
           <div className="row-buttons small">
             {photo?.original && (
-              <button className="btn" onClick={() => setEditing(true)}>
-                자르기 조정
-              </button>
+              <>
+                <button className="btn" onClick={() => setEditing(true)}>
+                  자르기 조정
+                </button>
+                <button className="btn" onClick={() => void rotate()}>
+                  돌리기
+                </button>
+              </>
             )}
             <button className="btn" onClick={() => addRef.current?.click()}>
               사진 추가

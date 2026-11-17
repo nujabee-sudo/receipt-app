@@ -1,8 +1,11 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { generateDocs, selectTargets } from '../../src/export/generate';
 import { DEFAULT_SETTINGS } from '../../src/storage/settings';
 import { makeReceipt } from '../helpers';
+
+// PDF·글꼴 처리는 전체 테스트를 동시에 돌릴 때 5초를 넘길 수 있다 (가끔 실패하던 원인)
+vi.setConfig({ testTimeout: 30_000 });
 
 const jpg = new Uint8Array(readFileSync('tests/fixtures/tiny.jpg'));
 const fontDir = 'node_modules/pretendard/dist/public/static/alternative/';

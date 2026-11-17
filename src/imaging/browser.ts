@@ -1,6 +1,7 @@
 // 브라우저 전용 (canvas). 단위 테스트 대상 아님 — E2E와 실기기로 확인한다.
-import type { Pt } from '../domain/types';
+import type { Pt, Rotation } from '../domain/types';
 import { denormalizeCorners, type Quad } from './homography';
+import { orientCorners, rotateImg } from './rotate';
 import { scanFilter } from './scanFilter';
 import { warp, type Img } from './warp';
 import { DecodeError } from './errors';
@@ -45,10 +46,14 @@ export async function resizeJpeg(blob: Blob, maxLong: number, quality: number): 
   return imgToJpeg(await decodeToImg(blob, maxLong), quality);
 }
 
-/** corners(원본 기준 픽셀 좌표)로 펴고 스캔 필터 → 1600px 이하 JPEG */
-export async function processPhoto(original: Blob, corners: [Pt, Pt, Pt, Pt] | null): Promise<Blob> {
+/** corners(원본 기준 픽셀 좌표)로 펴고, 영수증이 바로 서게 rotation만큼 돌린 뒤 스캔 필터 → 1600px 이하 JPEG */
+export async function processPhoto(
+  original: Blob,
+  corners: [Pt, Pt, Pt, Pt] | null,
+  rotation: Rotation = 0,
+): Promise<Blob> {
   const src = await decodeToImg(original, 2400);
-  let img = corners ? warp(src, corners) : src;
+  let img = corners ? warp(src, orientCorners(corners, rotation)) : rotateImg(src, rotation);
   img = scanFilter(img);
   const long = Math.max(img.width, img.height);
   if (long > 1600) {

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import 'fake-indexeddb/auto';
-import { afterEach, beforeEach, expect, test } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { useLayoutEffect } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
@@ -10,6 +10,9 @@ import { presets } from '../../src/storage/presets';
 import { settings } from '../../src/storage/settings';
 import { ReviewPage } from '../../src/ui/ReviewPage';
 import { makeReceipt } from '../helpers';
+
+const processPhoto = vi.fn(async (_o: Blob, _c: unknown, rotation = 0) => new Blob([`rot${rotation}`]));
+vi.mock('../../src/imaging/browser', () => ({ processPhoto: (...a: [Blob, unknown, number]) => processPhoto(...a) }));
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -149,4 +152,22 @@ test('recognizing again clears the values read from the receipt and requeues it'
   expect([r.date, r.time, r.amount, r.cardLast4, r.merchant, r.approvalNo]).toEqual([null, null, null, null, null, null]);
   expect(r.site).toBe('가나테크_서울 본사, 1호기 시운전');
   expect(r.users).toEqual(['김철수']);
+});
+
+test('the rotate button turns the cleaned-up photo a quarter turn each time', async () => {
+  const original = new Blob(['o']);
+  const corners: [[number, number], [number, number], [number, number], [number, number]] = [[1, 1], [9, 1], [9, 9], [1, 9]];
+  await receipts.put(makeReceipt({ id: 'a', date: TODAY, photos: [{ id: 'p', original, processed: new Blob(['x']), corners }] }));
+  processPhoto.mockClear();
+  URL.createObjectURL = vi.fn(() => 'blob:x');
+  URL.revokeObjectURL = vi.fn();
+  renderReview('a');
+  fireEvent.click(await screen.findByRole('button', { name: '돌리기' }));
+  await waitFor(async () => expect((await receipts.get('a'))!.photos[0].rotation).toBe(90));
+  expect(processPhoto.mock.lastCall?.slice(1)).toEqual([corners, 90]);
+  expect(processPhoto.mock.lastCall![0]).toBeTruthy(); // 원본으로 다시 만든다
+  expect((await receipts.get('a'))!.photos[0].upright).toBe(true); // 다시 인식할 때 바로 세운 사진을 읽는다
+  fireEvent.click(screen.getByRole('button', { name: '돌리기' }));
+  await waitFor(async () => expect((await receipts.get('a'))!.photos[0].rotation).toBe(180));
+  expect(processPhoto.mock.lastCall?.slice(1)).toEqual([corners, 180]);
 });
